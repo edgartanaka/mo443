@@ -40,7 +40,7 @@ def transform2(input_file):
     '''
     # read as grayscale
     img = skimage.io.imread(input_file, as_grey=True)
-    contours = measure.find_contours(img, 0.8)
+    contours = measure.find_contours(img, 0.5)
     for n, contour in enumerate(contours):
         red_contours = np.zeros(img.shape)
         red_contours[contour[:, 1], contour[:, 0]] = 0
