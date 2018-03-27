@@ -1,9 +1,8 @@
 import matplotlib
 matplotlib.use('Agg')
-import skimage.io
 import numpy as np
 import matplotlib.pyplot as plt
-from skimage import measure
+from skimage import measure, io
 
 '''
 Exercise: 1
@@ -16,68 +15,107 @@ State University of Campinas
 1st semester 2018
 '''
 
-def get_props(input_file):
-    img = skimage.io.imread(input_file, as_grey=True)
-    props = measure.regionprops(measure.label(img, background=255))
 
-    # label 1 is the background so we skip it
-    props = props[1:]
-    print("numero de regioes:", len(props))
+def show_objects_properties(input_file):
+    '''
+    Detect objects and save an image with each object labeled with its index.
+    Prints properties of each object.
+    :param input_file:
+    :return:
+    '''
+    img = io.imread(input_file, as_grey=True)
+
+    # detect objects and extract their properties
+    # background is 1 (white)
+    props = measure.regionprops(measure.label(img, background=1))
 
     areas = []
     for i, prop in enumerate(props):
-        # print properties of each region
-        print('regiao: {:d}\tperimetro: {:.0f}\tarea: {:.0f}\tcentroide: ({:.1f}, {:.1f})'.format(i, prop.perimeter, prop.area, prop.centroid[0], prop.centroid[1]))
+        print('regiao: {:d}\tperimetro: {:.0f}\tarea: {:.0f}\tcentroide: ({:.1f}, {:.1f})'
+              .format(i, prop.perimeter, prop.area, prop.centroid[0], prop.centroid[1]))
 
         # write text label on image
-        plt.text(prop.centroid[1]-4, prop.centroid[0]+4, str(i), fontsize=10, color='red')
+        plt.text(prop.centroid[1]-7, prop.centroid[0]+7, str(i), fontsize=10, color='black')
         areas.append(prop.area)
 
-    # show labeled regions
-    plt.imshow(img, cmap='gray')
-    plt.title('Regiões rotuladas: ' + input_file)
-    plt.savefig('regions.' + input_file)
-    plt.clf()
+    # show labeled objects
+    plot_only_contours(input_file)
+    save_image('regions.' + input_file, 'Regiões rotuladas: ' + input_file)
 
     # print object's areas stats
     areas = np.array(areas)
-    print('numero de regioes pequenas:', np.sum(areas < 1500))
-    print('numero de regioes medias:', np.sum((areas >= 1500) & (areas < 3000)))
-    print('numero de regioes grandes:', np.sum(areas >= 3000))
+    count_objects_per_size = np.array([np.sum(areas < 1500),
+                                       np.sum((areas >= 1500) & (areas < 3000)),
+                                       np.sum(areas >= 3000)])
+    print('----------------------------------------------')
+    print("numero total de objetos:", len(props))
+    print('numero de objetos pequenos:', count_objects_per_size[0])
+    print('numero de objetos medios:', count_objects_per_size[1])
+    print('numero de objetos grandes:', count_objects_per_size[2])
 
-    # show histogram of areas
-    plt.hist(areas, bins=[0, 1500, 3000, np.inf])
-    plt.xlabel('Área')
-    plt.ylabel('Número de regiões')
-    plt.title('Histograma de áreas: ' + input_file)
-    plt.savefig('hist.' + input_file)
-    plt.clf()
+    # plot histogram of objects per size
+    fig, ax = plt.subplots()
+    ind = np.arange(1,4)
+    ax.set_xticklabels(['Pequeno', 'Medio', 'Grande'])
+    ax.set_xticks(ind)
+    plt.bar(ind, count_objects_per_size)
+
+    # save image
+    plt.ylabel('Contagem')
+    save_image('hist.' + input_file, 'Histograma de áreas: ' + input_file, axis='on')
 
 
-def show_contours(input_file):
-    img = skimage.io.imread(input_file, as_grey=True)
+def plot_only_contours(input_file):
+    '''
+    Plots only the contours of the objects detected.
+    :param input_file: file name of image containing objects and a white background
+    :return: None. But plots in the current matplotlib
+    '''
+    img = io.imread(input_file, as_grey=True)
     contours = measure.find_contours(img, level=0.5)
 
     # start with blank image
-    img = np.full(img.shape, 255)
-    plt.imshow(img, cmap='gray', vmin=0, vmax=255)
+    img = np.full(img.shape, 1)
+    plt.imshow(img, cmap='gray', vmin=0, vmax=1)
 
     # fill with the contour pixels in red
     for n, contour in enumerate(contours):
         plt.plot(contour[:, 1], contour[:, 0], 'red', linewidth=1)
 
-    # print image containing only the contours in red
-    plt.title('Contornos: ' + input_file)
-    plt.savefig('contours.' + input_file)
-    plt.clf()
+
+def show_contours(input_file):
+    '''
+    Saves and image containing only the contours of the objects detected
+    :param input_file: file name of image containing objects and a white background
+    :return: None. Saves image with prefix "contours" in the current directory
+    '''
+    plot_only_contours(input_file)
+    save_image('contours.' + input_file, ('Contornos: ' + input_file))
 
 
 def show_grayscale(input_file):
+    '''
+    Saves the input_file image converted to grayscale
+    :param input_file: colored image file name
+    :return: None. Saves image with prefix "gray" in the current directory
+    '''
     # read as gray and print it
-    img = skimage.io.imread(input_file, as_grey=True)
+    img = io.imread(input_file, as_grey=True)
     plt.imshow(img,  cmap='gray')
-    plt.title('Escala de cinza: ' + input_file)
-    plt.savefig('gray.' + input_file)
+    save_image('gray.' + input_file, 'Escala de cinza: ' + input_file)
+
+
+def save_image(filename, title, axis='off'):
+    '''
+    Saves to file whatever we have plotted to matplotlib so far
+    :param filename:
+    :param title:
+    :return:
+    '''
+    plt.axis(axis)
+    plt.title(title)
+
+    plt.savefig(filename)
     plt.clf()
 
 
@@ -93,7 +131,7 @@ def main():
         print('------------------------------------------')
         show_grayscale(f)
         show_contours(f)
-        get_props(f)
+        show_objects_properties(f)
 
 if __name__ == "__main__":
     main()
