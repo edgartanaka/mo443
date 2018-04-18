@@ -1,14 +1,21 @@
-rm decoded.message*.txt
+# Resetting
+rm decoded*.txt
 rm bits*.png
 rm encoded*.png
+rm channel*.png
 
-python3 encode.py baboon.png message_big.txt 2 encoded.baboon.png
-python3 encode.py monalisa.png message_big.txt 2 encoded.monalisa.png
-python3 encode.py peppers.png message_small.txt 2 encoded.peppers.png
-python3 encode.py watch.png message_small.txt 2 encoded.watch.png
+# Encoding
+echo "Encoding..."
+python3 encode.py baboon.png message_big.txt 0 encoded0.baboon.png
+python3 encode.py monalisa.png message_small.txt 1 encoded1.monalisa.png
+python3 encode.py peppers.png message_big.txt 2 encoded2.peppers.png
+python3 encode.py watch.png message_too_big.txt 2 encoded2.watch.png
 
-python3 decode.py encoded.baboon.png 2 decoded.message.baboon.txt
-python3 decode.py encoded.monalisa.png 2 decoded.message.monalisa.txt
-python3 decode.py encoded.peppers.png 2 decoded.message.peppers.txt
-python3 decode.py encoded.watch.png 2 decoded.message.watch.txt
+# Decoding
+echo "\n\nDecoding..."
+python3 decode.py encoded0.baboon.png 0 decoded0.baboon.txt
+python3 decode.py encoded1.monalisa.png 1 decoded1.monalisa.txt
+python3 decode.py encoded2.peppers.png 2 decoded2.peppers.txt
+python3 decode.py encoded2.watch.png 2 decoded2.watch.txt
+
 

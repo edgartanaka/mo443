@@ -38,17 +38,18 @@ def read_message(input_file, bit_plane=0):
 
         # completed one char
         if bit_index == 0 and img_index > 0:
-            decoded_message += chr(char_byte)
             if char_byte == 0:
                 break  # end of message
-            char_byte = 0  # reset
+            else:
+                decoded_message += chr(char_byte)
+                char_byte = 0  # reset
 
     return decoded_message
 
 
 def write_file(message, output_file):
     with open(output_file, "w") as f:
-        print(message, file=f)
+        f.write(message)
 
 
 def main():
@@ -62,11 +63,12 @@ def main():
     decoded_message_file = sys.argv[3]
     bit_plane = int(sys.argv[2])
 
-    print("Decoding", coded_file)
+    print('---------------------------------------------')
+    print("Decoding image:", coded_file)
     decoded_message = read_message(coded_file, bit_plane)
     write_file(decoded_message, decoded_message_file)
     print("Decoded message to", decoded_message_file)
-
+    print('---------------------------------------------')
 
 if __name__ == "__main__":
     main()
