@@ -14,7 +14,6 @@ import numpy as np
 import sys
 from matplotlib import cm
 from matplotlib import pyplot as plt
-from scipy import misc
 from skimage import measure, io
 
 
@@ -23,25 +22,25 @@ def calculate_dx_dy(indexes):
     return dx_dy[0], dx_dy[1]
 
 
-def l_function(n, dx, dy, x, y, original_img):
+def l_function(n, dx, x, y, original_img):
     width = original_img.shape[0] - 1
     height = original_img.shape[1] - 1
     y = np.clip(y + n - 2, 0, height)  # y + n - 2
-    l = (-dx * (dx - 1) * (dx - 2) * original_img[np.clip(x - 1, 0, width), y]) / 6
-    l += ((dx + 1) * (dx - 1) * (dx - 2) * original_img[x, y]) / 2
-    l += (-dx * (dx + 1) * (dx - 2) * original_img[np.clip(x + 1, 0, width), y]) / 2
-    l += (dx * (dx + 1) * (dx - 1) * original_img[np.clip(x + 2, 0, width), y]) / 6
-    return l
+    l_value = (-dx * (dx - 1) * (dx - 2) * original_img[np.clip(x - 1, 0, width), y]) / 6
+    l_value += ((dx + 1) * (dx - 1) * (dx - 2) * original_img[x, y]) / 2
+    l_value += (-dx * (dx + 1) * (dx - 2) * original_img[np.clip(x + 1, 0, width), y]) / 2
+    l_value += (dx * (dx + 1) * (dx - 1) * original_img[np.clip(x + 2, 0, width), y]) / 6
+    return l_value
 
 
 def interpolate_lagrange(indexes, original_img):
     dx, dy = calculate_dx_dy(indexes)
     x = np.floor(indexes[0]).astype(int)
     y = np.floor(indexes[1]).astype(int)
-    scaled_img = (-dy * (dy - 1) * (dy - 2) * l_function(1, dx, dy, x, y, original_img)) / 6
-    scaled_img += ((dy + 1) * (dy - 1) * (dy - 2) * l_function(2, dx, dy, x, y, original_img)) / 2
-    scaled_img += (-dy * (dy + 1) * (dy - 2) * l_function(3, dx, dy, x, y, original_img)) / 2
-    scaled_img += (dy * (dy + 1) * (dy - 1) * l_function(4, dx, dy, x, y, original_img)) / 6
+    scaled_img = (-dy * (dy - 1) * (dy - 2) * l_function(1, dx, x, y, original_img)) / 6
+    scaled_img += ((dy + 1) * (dy - 1) * (dy - 2) * l_function(2, dx, x, y, original_img)) / 2
+    scaled_img += (-dy * (dy + 1) * (dy - 2) * l_function(3, dx, x, y, original_img)) / 2
+    scaled_img += (dy * (dy + 1) * (dy - 1) * l_function(4, dx, x, y, original_img)) / 6
     return scaled_img.astype(int)
 
 
@@ -95,15 +94,7 @@ def interpolate_nn(indexes, original_img):
     return original_img[np.clip(x, 0, width), np.clip(y, 0, height)]
 
 
-def scale_image(method, original_img, scale):
-    scaled_shape = np.floor(np.multiply(original_img.shape, scale)).astype(int)
-    print("scaled shape:", scaled_shape)
-    scaled_img = np.zeros(scaled_shape)
-
-    # scale
-    indexes = np.indices(scaled_shape)
-    indexes = indexes / scale
-
+def interpolate(method, indexes, original_img):
     if method == 4:
         return interpolate_lagrange(indexes, original_img)
     elif method == 3:
@@ -115,9 +106,13 @@ def scale_image(method, original_img, scale):
 
 
 def rotate_image(method, original_img, theta):
-    '''
-    theta in degrees
-    '''
+    """
+    Rotates an image while maintaining the center of the image.
+    :param method:
+    :param original_img:
+    :param theta: in degrees
+    :return: matrix with rotated image
+    """
     theta = np.deg2rad(theta)
     indexes = np.indices(original_img.shape)
 
@@ -152,56 +147,31 @@ def rotate_image(method, original_img, theta):
     indexes[0] = x
     indexes[1] = y
 
-    if method == 4:
-        rotated_img = interpolate_lagrange(indexes, original_img)
-    elif method == 3:
-        rotated_img = interpolate_bicubic(indexes, original_img)
-    elif method == 2:
-        rotated_img = interpolate_bilinear(indexes, original_img)
-    else:
-        rotated_img = interpolate_nn(indexes, original_img)
+    rotated_img = interpolate(method, indexes, original_img)
 
     # paint areas out of image range as black
     rotated_img[filter_invalid_coordinates] = 0
     return rotated_img
 
 
+def scale_image(method, original_img, scale):
+    scaled_shape = np.multiply(original_img.shape, scale).astype(int)
+    return resize_image(method, original_img, scaled_shape[0], scaled_shape[1])
+
+
 def resize_image(method, original_img, width, height):
     scale_x = width / original_img.shape[0]
     scale_y = height / original_img.shape[1]
 
-    # scale
+    # resize
     indexes = np.indices((width, height))
     indexes[0] = indexes[0] / scale_x
     indexes[1] = indexes[1] / scale_y
 
-    if method == 4:
-        return interpolate_lagrange(indexes, original_img)
-    elif method == 3:
-        return interpolate_bicubic(indexes, original_img)
-    elif method == 2:
-        return interpolate_bilinear(indexes, original_img)
-    else:
-        return interpolate_nn(indexes, original_img)
-
-    return None
+    return interpolate(method, indexes, original_img)
 
 
 def main():
-    # files = [
-    #     'baboon.png',
-    #     'butterfly.png',
-    #     'city.png',
-    #     'house.png',
-    #     'seagull.png',
-    # ]
-    # for i in range(1,5):
-    #     for f in files:
-    #         i = str(i)
-    #         print('python3 main.py -m ' + i + ' -a 27 -i ' + f + ' -o rotated' + i + '.' + f)
-    #         print('python3 main.py -m ' + i + ' -e 2.63 -i ' + f + ' -o scaled' + i + '.' + f)
-    #         print('python3 main.py -m ' + i + ' -d 1000 500 -i ' + f + ' -o resized' + i + '.' + f)
-
     parser = argparse.ArgumentParser(description='Scale and Rotate image.')
     parser.add_argument('-a', type=float, help='angle')
     parser.add_argument('-e', type=float, help='scale')
@@ -220,7 +190,8 @@ def main():
     dimensions = args.d
 
     # read image
-    original_img = misc.imread(input_img_file)
+    original_img = io.imread(input_img_file, as_grey=True)
+    print("original img shape:", original_img.shape)
 
     # apply transformation
     if angle:
@@ -234,6 +205,7 @@ def main():
 
     # save output image
     io.imsave(output_img_file, output_img, cmap='gray', vmin=0, vmax=255)
+
 
 if __name__ == "__main__":
     main()
