@@ -14,7 +14,7 @@ import numpy as np
 import sys
 from matplotlib import cm
 from matplotlib import pyplot as plt
-from skimage import measure, io
+from skimage import measure, io, img_as_ubyte
 
 
 def calculate_dx_dy(indexes):
@@ -34,6 +34,12 @@ def l_function(n, dx, x, y, original_img):
 
 
 def interpolate_lagrange(indexes, original_img):
+    '''
+    Interpolation based on Lagrange polynomials
+    :param indexes:
+    :param original_img:
+    :return:
+    '''
     dx, dy = calculate_dx_dy(indexes)
     x = np.floor(indexes[0]).astype(int)
     y = np.floor(indexes[1]).astype(int)
@@ -45,11 +51,20 @@ def interpolate_lagrange(indexes, original_img):
 
 
 def r_function(s):
-    return ((np.maximum(s + 2, 0) ** 3) - 4 * (np.maximum(s + 1, 0) ** 3) + 6 * (np.maximum(s, 0) ** 3) - 4 * (
-                np.maximum(s - 1, 0) ** 3)) / 6
+    return ((np.maximum(s + 2, 0) ** 3)
+            - 4 * (np.maximum(s + 1, 0) ** 3)
+            + 6 * (np.maximum(s, 0) ** 3)
+            - 4 * (np.maximum(s - 1, 0) ** 3)) / 6
 
 
 def interpolate_bicubic(indexes, original_img):
+    '''
+    Bicubic interpolation
+    Neighborhood of 4x4 pixels.
+    :param indexes:
+    :param original_img:
+    :return:
+    '''
     dx, dy = calculate_dx_dy(indexes)
     scaled_img = np.zeros(dx.shape)
     width = original_img.shape[0] - 1
@@ -69,6 +84,13 @@ def interpolate_bicubic(indexes, original_img):
 
 
 def interpolate_bilinear(indexes, original_img):
+    '''
+    Interpolation bilinear.
+    Weighted average of the 4 pixels around the point
+    :param indexes:
+    :param original_img:
+    :return:
+    '''
     width = original_img.shape[0] - 1
     height = original_img.shape[1] - 1
 
@@ -86,6 +108,12 @@ def interpolate_bilinear(indexes, original_img):
 
 
 def interpolate_nn(indexes, original_img):
+    '''
+    Interpolation by the nearest neighbor
+    :param indexes:
+    :param original_img:
+    :return:
+    '''
     indexes = np.round(indexes).astype(int)
     width = original_img.shape[0] - 1
     height = original_img.shape[1] - 1
@@ -113,6 +141,7 @@ def rotate_image(method, original_img, theta):
     :param theta: in degrees
     :return: matrix with rotated image
     """
+    theta = -theta  # counter clockwise orientation
     theta = np.deg2rad(theta)
     indexes = np.indices(original_img.shape)
 
@@ -189,8 +218,9 @@ def main():
     scale = args.e
     dimensions = args.d
 
-    # read image
+    # read image and convert to 8bit grayscale
     original_img = io.imread(input_img_file, as_grey=True)
+    original_img = img_as_ubyte(original_img)
     print("original img shape:", original_img.shape)
 
     # apply transformation
